@@ -5,13 +5,32 @@ from selenium.webdriver.chrome.service import Service
 import time
 import os
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+import re
 
 load_dotenv()
 
-def scrape_web(website):
+def clean_html(html):
+    """Remove scripts, styles, and extra whitespace from HTML"""
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    for script in soup(["script", "style", "meta", "link"]):
+        script.decompose()
+    
+    for comment in soup.findAll(string=lambda text: isinstance(text, BeautifulSoup.Comment)):
+        comment.extract()
+    
+    text = soup.get_text()
+    
+    lines = (line.strip() for line in text.splitlines())
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    text = '\n'.join(chunk for chunk in chunks if chunk)
+    
+    return text
+
+def scrape_web(website, clean=True):
     print("launching chrome browser with Bright Data proxy...")
 
-    # Bright Data credentials from environment variables
     proxy_user = os.getenv("BRIGHT_DATA_USER")
     proxy_pass = os.getenv("BRIGHT_DATA_PASS")
     proxy_host = "zproxy.lum-superproxy.io"
@@ -21,7 +40,6 @@ def scrape_web(website):
         print("Warning: Bright Data credentials not found in .env file")
         proxy_url = None
     else:
-        # Format proxy URL
         proxy_url = f"http://{proxy_user}:{proxy_pass}@{proxy_host}:{proxy_port}"
 
     chrome_driver_path= "./chromedriver.exe"
@@ -34,9 +52,13 @@ def scrape_web(website):
 
     try:
         driver.get(website)
-        time.sleep(3)  # Wait for page to render
+        time.sleep(3)  
         print("page loaded...")
         html= driver.page_source
+        
+        if clean:
+            print("cleaning DOM content...")
+            html = clean_html(html)
 
         return html
     finally:
