@@ -1,4 +1,4 @@
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import OllamaLLM
 
 def parse_content(content, query="Summarize the main points from the content"):
